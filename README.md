@@ -169,5 +169,57 @@ node .output/server/index.mjs
 
 ---
 
+## 📤 Panduan Push ke GitHub
+
+Proyek ini telah dikonfigurasi dengan file [`.gitignore`](.gitignore), sehingga folder berat seperti **`node_modules/`** (hasil `npm install`), folder build **`.output/`** & **`.nuxt/`** (hasil `npm run build`), serta file konfigurasi rahasia **`.env`** **secara otomatis diabaikan** dan tidak akan ikut ter-push ke GitHub.
+
+Berikut langkah-langkah untuk melakukan push ke GitHub secara mandiri:
+
+### 1. Buat Repositori di GitHub
+1. Buka [github.com/new](https://github.com/new).
+2. Beri nama repositori (contoh: `presentap` atau `presentab_new`).
+3. Pilih visibilitas (**Public** atau **Private**).
+4. **Jangan** centang *"Add a README file"* (karena repositori lokal sudah memiliki README).
+5. Klik **Create repository**, lalu salin URL repositorinya (contoh: `https://github.com/username/presentap.git`).
+
+### 2. Hubungkan Repositori Lokal ke GitHub
+Buka terminal di folder proyek ini:
+
+```bash
+# Pastikan nama remote mengarah ke repositori Anda
+git remote set-url origin https://github.com/<USERNAME>/<NAMA_REPO>.git
+
+# Atau jika belum ada remote 'origin':
+git remote add origin https://github.com/<USERNAME>/<NAMA_REPO>.git
+```
+
+### 3. Tambahkan File & Commit
+```bash
+# 1. Cek file mana saja yang akan dimasukkan (node_modules & .output otomatis diabaikan)
+git status
+
+# 2. Tambahkan semua file yang diperlukan
+git add .
+
+# 3. Buat commit pesan
+git commit -m "feat: initial commit presentap school attendance system"
+```
+
+### 4. Push ke GitHub
+```bash
+# Jika cabang (branch) Anda bernama master:
+git push -u origin master
+
+# Atau jika menggunakan cabang main:
+git branch -M main
+git push -u origin main
+```
+
+> **Tips Login:**
+> - Jika terminal meminta autentikasi, jendela browser **Git Credential Manager** akan terbuka otomatis untuk konfirmasi login.
+> - Jika menggunakan **Personal Access Token (PAT)**, gunakan token Anda sebagai pengganti password saat diminta.
+
+---
+
 ## 📄 Lisensi
 Proyek ini dibuat untuk keperluan manajemen absensi sekolah. Bebas dimodifikasi dan dikembangkan sesuai kebutuhan instansi.
