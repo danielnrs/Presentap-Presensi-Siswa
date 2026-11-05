@@ -29,6 +29,6 @@ jobs:
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << EOF
             cd ${{ secrets.APP_PATH }}
             npm install
-            pm2 restart myapp || pm2 start index.js --name myapp
+            pm2 restart    || pm2 start index.js --name myapp
             pm2 save
           EOF

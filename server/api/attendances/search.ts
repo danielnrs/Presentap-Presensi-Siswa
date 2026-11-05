@@ -16,9 +16,9 @@ export default defineEventHandler(async (event) => {
       };
     }
 
-    // Gunakan tanggal lokal langsung (asumsi server WIB)
-    const start = new Date(`${date}T00:00:00`);
-    const end = new Date(`${date}T23:59:59.999`);
+    // Gunakan timezone WIB untuk filter tanggal
+    const start = new Date(`${date}T00:00:00.000+07:00`);
+    const end = new Date(`${date}T23:59:59.999+07:00`);
 
     // ambil siswa sesuai nis atau nama
     const students = await prisma.students.findMany({
@@ -39,7 +39,7 @@ export default defineEventHandler(async (event) => {
     });
 
     // format hasil agar sesuai kebutuhan frontend
-    const result = students.map((s) => ({
+    const result = students.map((s: any) => ({
       name: s.name,
       nis: s.nis,
       class: s.class,

@@ -1,6 +1,5 @@
 import { WebSocketServer } from "ws";
-import type { WebSocket as WsWebSocket } from "ws"; // 👈 Gunakan `type` agar tidak bentrok dengan WebSocket bawaan browser
-
+import type { WebSocket as WsWebSocket } from "ws";
 export default defineNitroPlugin((nitroApp) => {
   // Pastikan globalThis.wsClients sudah ada
   globalThis.wsClients = globalThis.wsClients || [];

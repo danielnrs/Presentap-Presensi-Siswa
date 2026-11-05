@@ -207,7 +207,19 @@ let socket;
 
 const fetchAttendances = async () => {
   try {
-    const response = await axios.get("/api/attendances/attendance");
+    // Ambil hanya presensi hari ini (WIB)
+    const now = new Date();
+    const todayWIB = new Date(now);
+    todayWIB.setHours(0, 0, 0, 0);
+    const tomorrowWIB = new Date(todayWIB);
+    tomorrowWIB.setDate(tomorrowWIB.getDate() + 1);
+
+    const response = await axios.get("/api/attendances/attendance", {
+      params: {
+        start: todayWIB.toISOString(),
+        end: tomorrowWIB.toISOString()
+      }
+    });
     if (JSON.stringify(response.data) !== JSON.stringify(attendances.value)) {
       attendances.value = response.data;
     }
@@ -225,9 +237,11 @@ const closePresensiManual = () => {
 };
 
 const connectWebSocket = () => {
-  const socket = new WebSocket(
-    (location.protocol === "https:" ? "wss://" : "ws://") + location.host+'/ws'
-  );
+  const wsUrl = (location.port === "3000" || location.port === "5173")
+    ? `ws://${location.hostname}:3001`
+    : (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws";
+
+  socket = new WebSocket(wsUrl);
 
   socket.onmessage = (event) => {
     try {
@@ -318,24 +332,14 @@ const sortAttendances = (key) => {
 
 const formatDate = (dateString) => {
   if (!dateString) return "-";
-  
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return 'Format waktu tidak valid';
-    
-    // Gunakan metode UTC untuk konsistensi dengan backend
-    const day = String(date.getUTCDate()).padStart(2, '0');
-    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const year = date.getUTCFullYear();
-    const hours = String(date.getUTCHours()).padStart(2, '0');
-    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-    const seconds = String(date.getUTCSeconds()).padStart(2, '0');
-    
-    return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
-  } catch (error) {
-    console.error('Error formatting date:', error);
-    return 'Format waktu tidak valid';
-  }
+
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "Format tidak valid";
+
+  return date.toLocaleString("id-ID", {
+    timeZone: "Asia/Jakarta",
+    hour12: false,
+  });
 };
 
 const confirmDelete = (id) => {

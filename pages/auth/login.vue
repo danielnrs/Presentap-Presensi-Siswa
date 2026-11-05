@@ -4,8 +4,8 @@
     <div class="auth-card">
       <div class="logo-circle">
         <img
-          src="https://placehold.co/44x44/2563eb/ffffff?text=LOGO"
-          alt="Logo SI-Presensi Sekolah"
+          src="/presentap.png"
+          alt="Logo PresenTap"
           class="logo-img"
           onerror="this.style.display='none';this.parentNode.textContent='LOGO';"
         />
@@ -125,7 +125,7 @@ async function handleLogin() {
   to { opacity: 1; transform: none;}
 }
 .logo-circle {
-  background: #2563eb;
+  background: #c8d5dc;
   border-radius: 50%;
   width: 54px;
   height: 54px;
@@ -133,7 +133,7 @@ async function handleLogin() {
   align-items: center;
   justify-content: center;
   margin-bottom: 7px;
-  box-shadow: 0 2px 8px 0 rgba(80,120,180,0.13);
+  box-shadow: 0 2px 8px 0 rgba(249,115,22,0.25);
 }
 .logo-img {
   height: 40px;

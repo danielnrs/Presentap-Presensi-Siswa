@@ -2,8 +2,10 @@
   <div class="container">
     <!-- Header -->
     <header class="header">
-      <div class="logo">Logo</div>
-      <span class="header-text">PRESENSI SEKOLAH</span>
+      <div class="logo-circle">
+        <img src="/presentap.png" alt="Logo" class="logo-img" />
+      </div>
+      <span class="header-text">PresenTap</span>
     </header>
 
     <!-- Main Content -->
@@ -99,9 +101,11 @@
                   <strong>Jam Masuk</strong> :
                   {{
                     item.attendance && item.attendance.checkInTime
-                      ? new Date(item.attendance.checkInTime).getHours().toString().padStart(2, '0') + 
-                        '.' + 
-                        new Date(item.attendance.checkInTime).getMinutes().toString().padStart(2, '0')
+                      ? new Date(item.attendance.checkInTime).toLocaleTimeString("id-ID", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          timeZone: "Asia/Jakarta"
+                        })
                       : "-"
                   }}
                 </p>
@@ -109,9 +113,11 @@
                   <strong>Jam Pulang</strong> :
                   {{
                     item.attendance && item.attendance.checkOutTime
-                      ? new Date(item.attendance.checkOutTime).getHours().toString().padStart(2, '0') + 
-                        '.' + 
-                        new Date(item.attendance.checkOutTime).getMinutes().toString().padStart(2, '0')
+                      ? new Date(item.attendance.checkOutTime).toLocaleTimeString("id-ID", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          timeZone: "Asia/Jakarta"
+                        })
                       : "-"
                   }}
                 </p>
@@ -124,16 +130,10 @@
                         ? 'libur'
                         : item.attendance
                         ? item.attendance.info.toLowerCase()
-                        : 'alpha'
+                        : 'alpa'
                     "
                   >
-                    {{
-                      item.libur
-                        ? "Libur"
-                        : item.attendance
-                        ? item.attendance.info
-                        : "Alpha"
-                    }}
+                    {{ item.libur ? "Libur" : getStatusPresensi(item.attendance) }}
                   </span>
                 </p>
               </div>
@@ -152,10 +152,45 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { MagnifyingGlassIcon } from "@heroicons/vue/24/solid";
 
-const today = new Date();
+// Batas waktu absen (sama dengan di admin/rekap.vue)
+const batasJam = 8;
+const batasMenit = 0;
+
+// Helper: Cek apakah melewati jam batas absen
+function isAfterBatasWaktu(dateObj) {
+  if (!dateObj) return false;
+  const jamAbsen = new Date(dateObj);
+  const batas = new Date(jamAbsen);
+  // Gunakan timezone WIB untuk jam batas
+  batas.setHours(batasJam, batasMenit, 0, 0);
+  return jamAbsen > batas;
+}
+
+// Helper: Tentukan status presensi (manual tidak terpengaruh batas jam)
+function getStatusPresensi(attendance) {
+  if (!attendance) return "Alpa";
+  
+  const keterangan = attendance.info || "Hadir";
+  const isPresensiManual = ["Izin", "Sakit", "Dispen"].includes(keterangan);
+  
+  if (isAfterBatasWaktu(attendance.checkInTime) && !isPresensiManual) {
+    return "Alpa";
+  }
+  
+  return keterangan;
+}
+
+// Helper: dapatkan tanggal WIB hari ini
+const getWIBDate = () => {
+  const now = new Date();
+  // Gunakan timezone WIB untuk mendapatkan tanggal yang benar
+  return new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
+};
+
+const today = getWIBDate();
 const yyyy = today.getFullYear();
 const mm = String(today.getMonth() + 1).padStart(2, "0"); // bulan 0-11
 const dd = String(today.getDate()).padStart(2, "0");
@@ -207,7 +242,8 @@ function getWeekDates(baseDate) {
   return Array.from({ length: 7 }, (_, i) => {
     const date = new Date(monday);
     date.setDate(monday.getDate() + i);
-    return date.toISOString().split("T")[0]; // format YYYY-MM-DD
+    // Format YYYY-MM-DD dengan timezone WIB
+    return date.toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
   });
 }
 
@@ -245,21 +281,20 @@ const handleSearch = async () => {
       searchedDate.value = form.value.date;
     } else {
       // Mode mingguan
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayStr = today.toISOString().split('T')[0];
+      const todayWIB = getWIBDate();
+      todayWIB.setHours(0, 0, 0, 0);
+      const todayWIBStr = todayWIB.toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
       
       const weekDates = getWeekDates(form.value.date);
       const allResults = [];
 
-      // Hanya proses tanggal yang <= hari ini
+      // Hanya proses tanggal yang <= hari ini (WIB)
       for (const d of weekDates) {
-        // Konversi string tanggal ke objek Date untuk perbandingan yang akurat
-        const currentDate = new Date(d);
-        currentDate.setHours(0, 0, 0, 0);
+        // Konversi string tanggal ke objek Date untuk perbandingan yang akurat (WIB)
+        const currentDate = new Date(d + "T00:00:00.000+07:00");
         
-        // Hentikan loop jika tanggal melebihi hari ini
-        if (currentDate > today) break;
+        // Hentikan loop jika tanggal melebihi hari ini (WIB)
+        if (currentDate > todayWIB) break;
         
         // Jika hari libur, tambahkan data kosong
         if (isHoliday(d)) {
@@ -306,7 +341,6 @@ onMounted(() => {
 });
 </script>
 
-
 <style scoped>
 /* ====== GLOBAL ====== */
 .container {
@@ -330,22 +364,27 @@ onMounted(() => {
   flex-wrap: wrap;
 }
 
-.logo {
+.logo-circle {
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 50%;
-  background: #2563eb;
-  color: white;
-  font-weight: bold;
+  background: #c8d5dc;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 2px 8px 0 rgba(200,213,220,0.25);
+}
+
+.logo-img {
+  width: 1.8rem;
+  height: 1.8rem;
+  object-fit: contain;
 }
 
 .header-text {
   font-size: clamp(1rem, 2vw, 1.25rem);
-  font-weight: 600;
+  font-weight: 750;
   color: #1e3a8a;
   flex: 1;
   min-width: 150px;
@@ -631,7 +670,7 @@ onMounted(() => {
   color: #4c1d95;
 }
 
-.status.alpha {
+.status.alpa {
   background: #facecef0;
   color: #991b1b;
 }

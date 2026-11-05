@@ -13,6 +13,7 @@
             <label for="info">Keterangan</label>
             <select id="info" v-model="info" required>
               <option disabled value="">-- Pilih Keterangan --</option>
+              <option value="Hadir">Hadir</option>
               <option value="Izin">Izin</option>
               <option value="Sakit">Sakit</option>
               <option value="Dispen">Dispen</option>

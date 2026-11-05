@@ -17,15 +17,14 @@
               class="rfid-input"
             />
           </div>
+          <div class="form-group">
+            <label for="name">Nama</label>
+            <input id="name" v-model="formData.name" type="text" required />
+          </div>
 
           <div class="form-group">
             <label for="nis">NIS</label>
             <input id="nis" v-model="formData.nis" type="text" required />
-          </div>
-
-          <div class="form-group">
-            <label for="name">Nama</label>
-            <input id="name" v-model="formData.name" type="text" required />
           </div>
 
           <div class="form-group">
@@ -144,9 +143,11 @@ const close = () => {
 
 // WebSocket untuk membaca RFID
 const connectWebSocket = () => {
-  const socket = new WebSocket(
-    (location.protocol === "https:" ? "wss://" : "ws://") + location.host+'/ws'
-  );
+  const wsUrl = (location.port === "3000" || location.port === "5173")
+    ? `ws://${location.hostname}:3001`
+    : (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws";
+
+  socket = new WebSocket(wsUrl);
 
   socket.onmessage = (event) => {
     const data = JSON.parse(event.data);

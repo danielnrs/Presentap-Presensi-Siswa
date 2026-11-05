@@ -5,9 +5,6 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 
 function handleLogout() {
-  // Jika pakai token, hapus token di sini
-  // localStorage.removeItem('token')
-  // Redirect ke halaman login
   router.push('/')
 }
 </script>
@@ -16,7 +13,9 @@ function handleLogout() {
   <aside class="sidebar">
     <div class="sidebar-inner">
       <router-link to="/" class="logo-link">
-        <img src="/public/favicon.ico" alt="Logo" class="logo-img" />
+        <div class="logo-circle">
+          <img src="/presentap.png" alt="Logo" class="logo-img" />
+        </div>
         <span class="logo-text">PresenTap</span>
       </router-link>
       <nav class="navbar-menu">
@@ -59,16 +58,26 @@ function handleLogout() {
   padding: 10px;
   border-bottom: 2px solid #E0E0E0;
 }
+.logo-circle {
+  background: #c8d5dc;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+  margin-left: 10px;
+  box-shadow: 0 2px 8px 0 rgba(200,213,220,0.25);
+}
 .logo-img {
-  width: 27px;
-  height: 27px;
-  margin-right: 5px;
-  margin-left: 20px;
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
 }
 .logo-text {
   font-weight: bold;
   font-size: 18px;
-  margin-left: 15px;
   color: #333;
 }
 .navbar-menu {

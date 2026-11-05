@@ -14,7 +14,7 @@ body {
 .container {
   background-color: #f4f4f4;
   display: flex;
-  width: 100vw; /* Pastikan container menggunakan seluruh lebar viewport */
+  width: 100vw;
   height: 100vh;
 }
 

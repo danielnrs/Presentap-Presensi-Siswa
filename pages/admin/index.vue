@@ -70,7 +70,19 @@ export default {
         const students = studentsRes.data || [];
         totalStudents.value = students.length;
 
-        const attendanceRes = await axios.get("/api/attendances/attendance");
+        // Ambil hanya presensi hari ini (WIB)
+        const now = new Date();
+        const todayWIB = new Date(now);
+        todayWIB.setHours(0, 0, 0, 0);
+        const tomorrowWIB = new Date(todayWIB);
+        tomorrowWIB.setDate(tomorrowWIB.getDate() + 1);
+
+        const attendanceRes = await axios.get("/api/attendances/attendance", {
+          params: {
+            start: todayWIB.toISOString(),
+            end: tomorrowWIB.toISOString()
+          }
+        });
         const attendances = attendanceRes.data || [];
 
         // Ganti studentId/nis sesuai struktur attendance Anda
@@ -86,10 +98,11 @@ export default {
 
     // Koneksi WebSocket
     const connectWebSocket = () => {
-      // Ganti ws://localhost:3001 dengan alamat WebSocket server Anda
-      const socket = new WebSocket(
-        (location.protocol === "https:" ? "wss://" : "ws://") + location.host+'/ws'
-      );
+      const wsUrl = (location.port === "3000" || location.port === "5173")
+        ? `ws://${location.hostname}:3001`
+        : (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws";
+
+      socket = new WebSocket(wsUrl);
 
       socket.onopen = () => {
         console.log("WebSocket connected");

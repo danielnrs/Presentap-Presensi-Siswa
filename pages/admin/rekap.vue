@@ -1,7 +1,7 @@
 <template>
   <div class="container">
     <Sidebar />
-    <main class="content">
+    <main class="content">apak
       <h1 class="title">Rekap Presensi</h1>
       <div class="grid">
         <Card>
@@ -92,6 +92,7 @@
                     :key="day.getDate()"
                     :class="{
                       'sunday-column': day.getDay() === 0,
+                      'saturday-column': day.getDay() === 6,
                       'holiday-column': isHoliday(day)
                     }"
                   >
@@ -122,6 +123,7 @@
                     :key="tanggal"
                     :class="{
                       'sunday-column': isSunday(tanggal),
+                      'saturday-column': isSaturday(tanggal),
                       'holiday-column': isHoliday(new Date(monthFilter+'-'+String(tanggal).padStart(2,'0')))
                     }"
                   >
@@ -137,13 +139,15 @@
                   <th @click="setSort('nis')">NIS</th>
                   <th @click="setSort('kelas')">Kelas</th>
                   <th>Status</th>
+                  <th>Check-in</th>
+                  <th>Check-out</th>
                 </tr>
               </thead>
               <tbody>
                 <!-- DAILY -->
                 <tr
                   v-if="selectedPeriod === 'daily' && sortedRekapData.length === 0">
-                  <td colspan="5" class="empty-message">
+                  <td colspan="7" class="empty-message">
                     Tidak ada data rekap.
                   </td>
                 </tr>
@@ -156,6 +160,8 @@
                   <td class="text-left">{{ row.nis }}</td>
                   <td class="text-left">{{ row.kelas }}</td>
                   <td>{{ row.status }}</td>
+                  <td>{{ row.checkInTime || '-' }}</td>
+                  <td>{{ row.checkOutTime || '-' }}</td>
                 </tr>
                 <!-- WEEKLY -->
                 <tr
@@ -175,8 +181,10 @@
                   <td
                     v-for="day in daysInWeek"
                     :key="day.getDate()"
-                    :class="day.getDay() === 0 
+                    :class="day.getDay() === 0
                       ? 'sunday-column' 
+                      : day.getDay() === 6
+                      ? 'saturday-column'
                       : (isHoliday(day) ? 'holiday-column' : '')"
                   >
                     {{ row.attendance[day.getDate()] || '' }}
@@ -202,6 +210,8 @@
                     :key="tanggal"
                     :class="isSunday(tanggal) 
                       ? 'sunday-column' 
+                      : isSaturday(tanggal)
+                      ? 'saturday-column'
                       : (isHoliday(new Date(monthFilter+'-'+String(tanggal).padStart(2,'0'))) ? 'holiday-column' : '')"
                   >
                     {{ row.attendance[tanggal] || '' }}
@@ -231,11 +241,11 @@ import { ref, computed, onMounted, watch } from "vue";
 import Sidebar from "@/components/common/SideBar.vue";
 import Card from "@/components/common/card.vue";
 import ExcelJS from "exceljs";
-import { saveAs } from "file-saver";
+import pkg from "file-saver";
+const { saveAs } = pkg;
 
-// Batas waktu absen (ganti sesuai kebutuhan)
-const batasJam = 23;
-const batasMenit = 50;
+const batasJam = 8;
+const batasMenit = 0;
 
 // Helper: Cek apakah melewati jam batas absen
 function isAfterBatasWaktu(dateObj) {
@@ -249,6 +259,16 @@ function isAfterBatasWaktu(dateObj) {
 // Helper: Cek apakah hari Minggu
 function isSundayDate(dateObj) {
   return dateObj.getDay() === 0;
+}
+
+// Helper: Cek apakah hari Sabtu
+function isSaturdayDate(dateObj) {
+  return dateObj.getDay() === 6;
+}
+
+// Helper: Cek apakah hari libur (Minggu atau Sabtu atau hari libur resmi)
+function isWeekendDate(dateObj) {
+  return isSundayDate(dateObj) || isSaturdayDate(dateObj) || isHoliday(dateObj);
 }
 
 // Helper: Cek apakah masa depan (besok/dst)
@@ -272,17 +292,23 @@ function isHoliday(dateObj) {
 }
 
 const selectedPeriod = ref("daily");
-// Gunakan tanggal lokal tanpa penyesuaian timezone
-const dateFilter = ref(new Date().toISOString().slice(0, 10));
-const monthFilter = ref(new Date().toISOString().slice(0, 7));
+// Gunakan tanggal WIB (UTC+7) untuk default
+const getWIBDate = () => {
+  const now = new Date();
+  const wibOffset = 7 * 60 * 60 * 1000; // WIB is UTC+7
+  const wibTime = new Date(now.getTime() + wibOffset);
+  return wibTime.toISOString().slice(0, 10);
+};
+const dateFilter = ref(getWIBDate());
+const monthFilter = ref(getWIBDate().slice(0, 7));
 const attendances = ref([]);
 const students = ref([]);
 const selectedClass = ref("");
 const sortKey = ref("name");
 const sortOrder = ref("asc");
-// Gunakan tanggal lokal langsung (asumsi server WIB)
-const today = new Date().toISOString().slice(0, 10);
-const maxMonth = new Date().toISOString().slice(0, 7);
+// Gunakan tanggal WIB untuk today
+const today = getWIBDate();
+const maxMonth = getWIBDate().slice(0, 7);
 
 // 🔹 State untuk libur nasional
 const holidays = ref([]);
@@ -343,7 +369,15 @@ const isSunday = (tanggal) => {
   const year = +monthFilter.value.slice(0, 4);
   const month = +monthFilter.value.slice(5, 7);
   const date = new Date(year, month - 1, tanggal);
-  return date.getDay() === 0;
+  return date.getDay() === 0; // Hanya Minggu
+};
+
+const isSaturday = (tanggal) => {
+  if (selectedPeriod.value !== "monthly" || !monthFilter.value) return false;
+  const year = +monthFilter.value.slice(0, 4);
+  const month = +monthFilter.value.slice(5, 7);
+  const date = new Date(year, month - 1, tanggal);
+  return date.getDay() === 6; // Hanya Sabtu
 };
 
 const daysInWeek = computed(() => {
@@ -357,29 +391,33 @@ const daysInWeek = computed(() => {
 });
 
 const getPeriodRange = () => {
+  // Helper untuk membuat start/end date dalam WIB timezone
+  const createWIBDate = (dateStr, hours = 0, minutes = 0, seconds = 0, ms = 0) => {
+    const date = new Date(dateStr);
+    date.setHours(hours, minutes, seconds, ms);
+    return date;
+  };
+
   if (selectedPeriod.value === "monthly") {
     const year = +monthFilter.value.slice(0, 4);
     const month = +monthFilter.value.slice(5, 7);
-    const start = new Date(year, month - 1, 1, 0, 0, 0, 0);
-    const end = new Date(year, month, 0, 23, 59, 59, 999);
+    const start = createWIBDate(`${year}-${monthFilter.value.slice(5, 7)}-01`, 0, 0, 0, 0);
+    const end = createWIBDate(`${year}-${monthFilter.value.slice(5, 7)}-01`, 23, 59, 59, 999);
+    end.setMonth(end.getMonth() + 1);
+    end.setDate(0); // Set to last day of month
     return { start, end };
   } else if (selectedPeriod.value === "weekly") {
     const d = new Date(dateFilter.value);
     const day = d.getDay();
     const diff = (day + 6) % 7;
-    const start = new Date(d);
+    const start = createWIBDate(dateFilter.value, 0, 0, 0, 0);
     start.setDate(start.getDate() - diff);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(start);
+    const end = createWIBDate(start, 23, 59, 59, 999);
     end.setDate(end.getDate() + 6);
-    end.setHours(23, 59, 59, 999);
     return { start, end };
   } else {
-    const d = new Date(dateFilter.value);
-    const start = new Date(d);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(d);
-    end.setHours(23, 59, 59, 999);
+    const start = createWIBDate(dateFilter.value, 0, 0, 0, 0);
+    const end = createWIBDate(dateFilter.value, 23, 59, 59, 999);
     return { start, end };
   }
 };
@@ -416,16 +454,53 @@ const rekapData = computed(() => {
   return students.value.map((s) => {
     const presensiSiswa = filtered.filter((a) => a.nis === s.nis);
     let status = "-";
+    let checkInTime = "";
+    let checkOutTime = "";
+    
     if (presensiSiswa.length > 0) {
-      if (isAfterBatasWaktu(presensiSiswa[0].checkInTime)) {
-        status = "Alfa";
+      const attendance = presensiSiswa[0];
+      // Format waktu untuk display
+      checkInTime = attendance.checkInTime ? 
+        new Date(attendance.checkInTime).toLocaleString("id-ID", {
+          day: "2-digit",
+          month: "numeric",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false
+        }) : "";
+      checkOutTime = attendance.checkOutTime ? 
+        new Date(attendance.checkOutTime).toLocaleString("id-ID", {
+          day: "2-digit",
+          month: "numeric", 
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false
+        }) : "";
+        
+      // Presensi manual (Izin/Sakit/Dispen) tidak terpengaruh batas jam
+      const keterangan = attendance.info || "Hadir";
+      const isPresensiManual = ["Izin", "Sakit", "Dispen"].includes(keterangan);
+      
+      if (isAfterBatasWaktu(attendance.checkInTime) && !isPresensiManual) {
+        status = "Alpa";
       } else {
-        status = presensiSiswa[0].info || "Hadir";
+        status = keterangan;
       }
     } else {
-      status = "Alfa";
+      status = "Alpa";
     }
-    return { name: s.name, nis: s.nis, kelas: s.kelas || s.class, status };
+    return { 
+      name: s.name, 
+      nis: s.nis, 
+      kelas: s.kelas || s.class, 
+      status,
+      checkInTime,
+      checkOutTime
+    };
   });
 });
 
@@ -474,11 +549,7 @@ const weeklyRekapFiltered = computed(() => {
     const attendanceMap = {};
     let h = "", s = "", i = "", a = "", d = "";
     daysInWeek.value.forEach((date) => {
-      if (isSundayDate(date) || isHoliday(date)) {
-        attendanceMap[date.getDate()] = "";
-        return;
-      }
-      if (isFuture(date)) {
+      if (isWeekendDate(date) || isFuture(date)) {
         attendanceMap[date.getDate()] = "";
         return;
       }
@@ -488,12 +559,15 @@ const weeklyRekapFiltered = computed(() => {
       });
       if (match) {
         let status = (match.info || "HADIR").toUpperCase();
-        if (isAfterBatasWaktu(match.checkInTime)) {
+        const keterangan = (match.info || "HADIR").toUpperCase();
+        const isPresensiManual = ["IZIN", "SAKIT", "DISPEN"].includes(keterangan);
+        
+        if (isAfterBatasWaktu(match.checkInTime) && !isPresensiManual) {
           status = "A"; a++;
         } else if (status === "HADIR") { status = "H"; h++; }
         else if (status === "SAKIT") { status = "S"; s++; }
         else if (status === "IZIN") { status = "I"; i++; }
-        else if (status === "ALFA") { status = "A"; a++; }
+        else if (status === "ALPA") { status = "A"; a++; }
         else if (status === "DISPEN") { status = "D"; d++; }
         else status = "-";
         attendanceMap[date.getDate()] = status;
@@ -539,7 +613,7 @@ const monthlyRekapFiltered = computed(() => {
     let h = "", s = "", i = "", a = "", d = "";
     for(let tgl of daysInMonth.value) {
       const searchDate = new Date(start.getFullYear(), start.getMonth(), tgl);
-      if (isSundayDate(searchDate) || isHoliday(searchDate)) {
+      if (isWeekendDate(searchDate)) {
         attendanceMap[tgl] = "";
         continue;
       }
@@ -553,12 +627,15 @@ const monthlyRekapFiltered = computed(() => {
       });
       if (match) {
         let status = (match.info || "HADIR").toUpperCase();
-        if (isAfterBatasWaktu(match.checkInTime)) {
+        const keterangan = (match.info || "HADIR").toUpperCase();
+        const isPresensiManual = ["IZIN", "SAKIT", "DISPEN"].includes(keterangan);
+        
+        if (isAfterBatasWaktu(match.checkInTime) && !isPresensiManual) {
           attendanceMap[tgl] = "A"; a++;
         } else if (status === "HADIR") { attendanceMap[tgl] = "H"; h++; }
         else if (status === "SAKIT") { attendanceMap[tgl] = "S"; s++; }
         else if (status === "IZIN") { attendanceMap[tgl] = "I"; i++; }
-        else if (status === "ALFA") { attendanceMap[tgl] = "A"; a++; }
+        else if (status === "ALPA") { attendanceMap[tgl] = "A"; a++; }
         else if (status === "DISPEN") { attendanceMap[tgl] = "D"; d++; }
         else attendanceMap[tgl] = "-";
       } else {
@@ -614,15 +691,15 @@ const exportToExcel = async () => {
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet("Rekap Harian");
 
-    // Judul tanggal (merge B2‑E2)
-    ws.mergeCells("B2:E2");
+    // Judul tanggal (merge B2‑G2)
+    ws.mergeCells("B2:G2");
     const cellTitle = ws.getCell("B2");
     cellTitle.value = `Tanggal: ${formatDate(tanggal)}`;
     cellTitle.font = { bold: true };
     cellTitle.alignment = { vertical: "middle", horizontal: "left" };
 
     // Header
-    const headerRow = ws.addRow(["No", "Nama", "NIS", "Kelas", "Status"]);
+    const headerRow = ws.addRow(["No", "Nama", "NIS", "Kelas", "Status", "Check-in", "Check-out"]);
     headerRow.eachCell((cell) => {
       cell.font = { bold: true };
       cell.alignment = { horizontal: "center", vertical: "middle" };
@@ -637,10 +714,12 @@ const exportToExcel = async () => {
 
     // Data
     sortedRekapData.value.forEach((row, idx) => {
-      const dataRow = ws.addRow([idx + 1, row.name, row.nis, row.kelas, row.status]);
+      const dataRow = ws.addRow([idx + 1, row.name, row.nis, row.kelas, row.status, row.checkInTime || '-', row.checkOutTime || '-']);
       dataRow.getCell(2).alignment = { horizontal: "left" };
       dataRow.getCell(3).alignment = { horizontal: "left" };
       dataRow.getCell(4).alignment = { horizontal: "left" };
+      dataRow.getCell(6).alignment = { horizontal: "left" };
+      dataRow.getCell(7).alignment = { horizontal: "left" };
       dataRow.eachCell((cell) => {
         cell.border = {
           top: { style: "thin", color: { argb: "FF000000" } },
@@ -648,7 +727,7 @@ const exportToExcel = async () => {
           bottom: { style: "thin", color: { argb: "FF000000" } },
           right: { style: "thin", color: { argb: "FF000000" } },
         };
-        if (![2, 3, 4].includes(cell.col)) {
+        if (![2, 3, 4, 6, 7].includes(cell.col)) {
           cell.alignment = { horizontal: "center" };
         }
       });
@@ -660,6 +739,8 @@ const exportToExcel = async () => {
     ws.getColumn(3).width = 15;
     ws.getColumn(4).width = 10;
     ws.getColumn(5).width = 12;
+    ws.getColumn(6).width = 25;
+    ws.getColumn(7).width = 25;
 
     const buf = await wb.xlsx.writeBuffer();
     saveAs(
@@ -749,6 +830,12 @@ else if (selectedPeriod.value === "weekly") {
       cell.font = { color: { argb: "FF0000" }, bold: true }; // merah
     }
 
+    // 🔹 Jika hari Sabtu
+    if (day.getDay() === 6) {
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF4F4F4" } };
+      cell.font = { color: { argb: "FF000000" }, bold: true }; // hitam
+    }
+
     // 🔹 Jika libur nasional
     if (isHoliday(day)) {
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF4F4F4" } }; // kuning muda
@@ -813,6 +900,12 @@ else if (selectedPeriod.value === "weekly") {
 
         else if (date.getDay() === 0) {
           cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "f1efef" } };
+          cell.font = { color: { argb: "FF0000" }, bold: true };
+        }
+
+        else if (date.getDay() === 6) {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "f1efef" } };
+          cell.font = { color: { argb: "FF000000" }, bold: true };
         }
 
         else if (isHoliday(date)) {
@@ -919,6 +1012,12 @@ else if (selectedPeriod.value === "monthly") {
     cell.font = { color: { argb: "FF0000" }, bold: true };
   }
 
+  // 🔹 Jika Sabtu
+  if (date.getDay() === 6) {
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF4F4F4" } };
+    cell.font = { color: { argb: "FF000000" }, bold: true };
+  }
+
   // 🔹 Jika libur nasional
   if (isHoliday(date)) {
     cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF4F4F4" } };
@@ -978,6 +1077,12 @@ else if (selectedPeriod.value === "monthly") {
           else if (date.getDay() === 0) {
             // 🔹 Hanya Minggu
             cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "f1efef" } };
+            cell.font = { color: { argb: "FF0000" }, bold: true };
+          }
+          else if (date.getDay() === 6) {
+            // 🔹 Hanya Sabtu
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "f1efef" } };
+            cell.font = { color: { argb: "FF000000" }, bold: true };
           }
           else if (isHoliday(date)) {
             // 🔹 Hanya libur nasional
@@ -1093,6 +1198,11 @@ label {
 .sunday-column {
   background-color: #f1efef;
   color: #FF0000;
+  font-weight: bold;
+}
+.saturday-column {
+  background-color: #f1efef;
+  color: #000000;
   font-weight: bold;
 }
 .holiday-column {
