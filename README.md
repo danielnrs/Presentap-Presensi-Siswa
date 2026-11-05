@@ -1,4 +1,4 @@
-# PresenTap - Sistem Presensi Sekolah Berbasis RFID & IoT
+# PresenTap - Sistem Presensi Berbasis RFID & IoT
 
 PresenTap adalah sistem manajemen dan pemantauan presensi siswa sekolah modern berbasis web yang terintegrasi langsung dengan perangkat RFID secara *real-time* via WebSocket. Dibangun menggunakan **Nuxt 3**, **Prisma ORM**, dan **MySQL**.
 
